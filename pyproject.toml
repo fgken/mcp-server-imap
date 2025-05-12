@@ -1,0 +1,19 @@
+[project]
+name = "mcp-server-imap"
+version = "0.1.0"
+description = "MCP Server for IMAP"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "httpx>=0.28.1",
+    "imapclient>=3.0.1",
+    "mcp[cli]>=1.6.0",
+]
+
+[tooo.ruff]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3.5",
+    "pytest-asyncio>=0.26.0",
+]
