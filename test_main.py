@@ -161,19 +161,38 @@ class TestIMAPSearch:
         mock_client = MagicMock()
         mock_imap_client.return_value.__enter__.return_value = mock_client
         mock_client.search.return_value = [1, 2, 3]
+        
+        # Mock fetch response
+        mock_client.fetch.return_value = {
+            1: {b"RFC822": b"email_content_1"},
+            2: {b"RFC822": b"email_content_2"},
+            3: {b"RFC822": b"email_content_3"},
+        }
+        
+        # Mock email message objects
+        mock_msg = MagicMock()
+        mock_msg.__contains__.side_effect = lambda x: x in ["From", "To", "Subject"]
+        mock_msg.__getitem__.side_effect = lambda x: f"Test {x}"
 
-        # Test data
-        folder = "INBOX"
-        query = {"from": "test@example.com"}
+        # Patch email.message_from_bytes
+        with patch("main.email.message_from_bytes", return_value=mock_msg):
+            # Test data
+            folder = "INBOX"
+            query = {"from": "test@example.com"}
 
-        # Call function without fields parameter (should return only message IDs)
-        result = await search(folder, query)
+            # Call function
+            result = await search(folder, query)
 
-        # Assertions
-        mock_client.login.assert_called_once()
-        mock_client.select_folder.assert_called_once_with(folder)
-        mock_client.search.assert_called_once()
-        assert result == {"messages": []}
+            # Assertions
+            mock_client.login.assert_called_once()
+            mock_client.select_folder.assert_called_once_with(folder)
+            mock_client.search.assert_called_once()
+            
+            # Check structure and content
+            assert "messages" in result
+            assert len(result["messages"]) == 3
+            assert "headers" in result["messages"][0]
+            assert "from" in result["messages"][0]["headers"]
 
     @pytest.mark.asyncio
     @patch("main.IMAPClient")
@@ -202,20 +221,35 @@ class TestIMAPSearch:
         mock_client = MagicMock()
         mock_imap_client.return_value.__enter__.return_value = mock_client
         mock_client.search.return_value = [10, 20]
-
-        # Test data
-        folder = "Archive"
-        query = {
-            "from": "important@example.com",
-            "not": [{"subject": "unimportant"}],
+        
+        # Mock fetch response
+        mock_client.fetch.return_value = {
+            10: {b"RFC822": b"email_content_10"},
+            20: {b"RFC822": b"email_content_20"},
         }
+        
+        # Mock email message objects
+        mock_msg = MagicMock()
+        mock_msg.__contains__.side_effect = lambda x: x in ["From", "Subject"]
+        mock_msg.__getitem__.side_effect = lambda x: f"Test {x}"
 
-        # Call function
-        result = await search(folder, query)
+        # Patch email.message_from_bytes
+        with patch("main.email.message_from_bytes", return_value=mock_msg):
+            # Test data
+            folder = "Archive"
+            query = {
+                "from": "important@example.com",
+                "not": [{"subject": "unimportant"}],
+            }
 
-        # Assertions
-        mock_client.select_folder.assert_called_once_with(folder)
-        assert result == {"messages": []}
+            # Call function
+            result = await search(folder, query)
+
+            # Assertions
+            mock_client.select_folder.assert_called_once_with(folder)
+            assert "messages" in result
+            assert len(result["messages"]) == 2
+            assert "headers" in result["messages"][0]
 
     def test_dsl_to_search_empty_query(self):
         """Test conversion of empty query to IMAP search criteria"""
@@ -232,20 +266,37 @@ class TestIMAPSearch:
         mock_client = MagicMock()
         mock_imap_client.return_value.__enter__.return_value = mock_client
         mock_client.search.return_value = [1, 2, 3, 4, 5]
+        
+        # Mock fetch response
+        mock_resp = {}
+        for i in range(1, 6):
+            mock_resp[i] = {b"RFC822": f"email_content_{i}".encode()}
+        mock_client.fetch.return_value = mock_resp
+        
+        # Mock email message objects
+        mock_msg = MagicMock()
+        mock_msg.__contains__.side_effect = lambda x: x in ["From", "Subject"]
+        mock_msg.__getitem__.side_effect = lambda x: f"Test {x}"
 
-        # Test data
-        folder = "Inbox"
-        query = {}
+        # Patch email.message_from_bytes
+        with patch("main.email.message_from_bytes", return_value=mock_msg):
+            # Test data
+            folder = "Inbox"
+            query = {}
 
-        # Call function
-        result = await search(folder, query)
+            # Call function
+            result = await search(folder, query)
 
-        # Assertions
-        mock_client.login.assert_called_once()
-        mock_client.select_folder.assert_called_once_with(folder)
-        # Verify that search was called with ALL
-        mock_client.search.assert_called_once_with(["charset", "UTF-8", "ALL"])
-        assert result == {"messages": []}
+            # Assertions
+            mock_client.login.assert_called_once()
+            mock_client.select_folder.assert_called_once_with(folder)
+            # Verify that search was called with ALL
+            mock_client.search.assert_called_once_with(["charset", "UTF-8", "ALL"])
+            
+            # Check structure and content
+            assert "messages" in result
+            assert len(result["messages"]) == 5
+            assert "headers" in result["messages"][0]
 
     @pytest.mark.asyncio
     @patch("main.IMAPClient")
@@ -255,25 +306,42 @@ class TestIMAPSearch:
         mock_client = MagicMock()
         mock_imap_client.return_value.__enter__.return_value = mock_client
         mock_client.search.return_value = [101, 102, 103]
+        
+        # Mock fetch response
+        mock_resp = {}
+        for i in [101, 102, 103]:
+            mock_resp[i] = {b"RFC822": f"email_content_{i}".encode()}
+        mock_client.fetch.return_value = mock_resp
+        
+        # Mock email message objects
+        mock_msg = MagicMock()
+        mock_msg.__contains__.side_effect = lambda x: x in ["From", "Subject"]
+        mock_msg.__getitem__.side_effect = lambda x: f"Test {x}"
 
-        # Test data - this is the specific case requested in the task
-        folder = "Inbox"
-        query = {}
+        # Patch email.message_from_bytes
+        with patch("main.email.message_from_bytes", return_value=mock_msg):
+            # Test data - this is the specific case requested in the task
+            folder = "Inbox"
+            query = {}
 
-        # Call function
-        result = await search(folder, query)
+            # Call function
+            result = await search(folder, query)
 
-        # Assertions
-        mock_client.login.assert_called_once()
-        mock_client.select_folder.assert_called_once_with(folder)
-        # Verify that search was called with ALL
-        mock_client.search.assert_called_once_with(["charset", "UTF-8", "ALL"])
-        assert result == {"messages": []}
+            # Assertions
+            mock_client.login.assert_called_once()
+            mock_client.select_folder.assert_called_once_with(folder)
+            # Verify that search was called with ALL
+            mock_client.search.assert_called_once_with(["charset", "UTF-8", "ALL"])
+            
+            # Check structure and content
+            assert "messages" in result
+            assert len(result["messages"]) == 3
+            assert "headers" in result["messages"][0]
 
     @pytest.mark.asyncio
     @patch("main.IMAPClient")
     async def test_search_function_with_headers(self, mock_imap_client):
-        """Test the search function with headers field"""
+        """Test the search function returns headers"""
         # Setup mock
         mock_client = MagicMock()
         mock_imap_client.return_value.__enter__.return_value = mock_client
@@ -319,10 +387,9 @@ class TestIMAPSearch:
             # Test data
             folder = "INBOX"
             query = {"from": "test@example.com"}
-            fields = {"headers": True}
 
             # Call function
-            result = await search(folder, query, fields)
+            result = await search(folder, query)
 
             # Assertions
             mock_client.login.assert_called_once()
@@ -341,14 +408,14 @@ class TestIMAPSearch:
             assert result["messages"][1]["headers"]["from"] == "sender2@example.com"
             assert result["messages"][1]["headers"]["subject"] == "Test Subject 2"
 
-            # Verify that only headers were included
+            # Verify that body is not included
             assert "body" not in result["messages"][0]
             assert "attachments" not in result["messages"][0]
 
     @pytest.mark.asyncio
     @patch("main.IMAPClient")
-    async def test_search_function_with_body(self, mock_imap_client):
-        """Test the search function with body field"""
+    async def test_search_function_no_body_included(self, mock_imap_client):
+        """Test that the search function does not include body"""
         # Setup mock
         mock_client = MagicMock()
         mock_imap_client.return_value.__enter__.return_value = mock_client
@@ -359,33 +426,38 @@ class TestIMAPSearch:
 
         # Mock email message object
         mock_msg = MagicMock()
+        mock_msg.__getitem__.side_effect = lambda x: {
+            "From": "sender@example.com",
+            "Subject": "Test Subject",
+        }.get(x)
+        mock_msg.__contains__.side_effect = lambda x: x in ["From", "Subject"]
 
         # Patch email.message_from_bytes and get_email_body
         with patch("main.email.message_from_bytes", return_value=mock_msg):
-            with patch(
-                "main.get_email_body", return_value="This is the email body content"
-            ):
-                # Test data
-                folder = "INBOX"
-                query = {"subject": "test"}
-                fields = {"body": True}
+            # Test data
+            folder = "INBOX"
+            query = {"subject": "test"}
 
-                # Call function
-                result = await search(folder, query, fields)
+            # Call function
+            result = await search(folder, query)
 
-                # Assertions
-                assert "messages" in result
-                assert len(result["messages"]) == 1
-                assert result["messages"][0]["body"] == "This is the email body content"
-
-                # Verify that only body was included
-                assert "headers" not in result["messages"][0]
-                assert "attachments" not in result["messages"][0]
+            # Assertions
+            assert "messages" in result
+            assert len(result["messages"]) == 1
+            
+            # Check headers are included
+            assert "headers" in result["messages"][0]
+            assert result["messages"][0]["headers"]["from"] == "sender@example.com"
+            assert result["messages"][0]["headers"]["subject"] == "Test Subject"
+            
+            # Verify that body is not included
+            assert "body" not in result["messages"][0]
+            assert "attachments" not in result["messages"][0]
 
     @pytest.mark.asyncio
     @patch("main.IMAPClient")
-    async def test_search_function_with_multiple_fields(self, mock_imap_client):
-        """Test the search function with multiple fields"""
+    async def test_search_function_headers_only(self, mock_imap_client):
+        """Test that search function returns only headers and not body"""
         # Setup mock
         mock_client = MagicMock()
         mock_imap_client.return_value.__enter__.return_value = mock_client
@@ -402,28 +474,27 @@ class TestIMAPSearch:
         }.get(x)
         mock_msg.__contains__.side_effect = lambda x: x in ["From", "Subject"]
 
-        # Patch email.message_from_bytes and get_email_body
+        # Patch email.message_from_bytes
         with patch("main.email.message_from_bytes", return_value=mock_msg):
-            with patch("main.get_email_body", return_value="Email body content"):
-                # Test data
-                folder = "INBOX"
-                query = {"subject": "test"}
-                fields = {"headers": True, "body": True}
+            # Test data
+            folder = "INBOX"
+            query = {"subject": "test"}
 
-                # Call function
-                result = await search(folder, query, fields)
+            # Call function
+            result = await search(folder, query)
 
-                # Assertions
-                assert "messages" in result
-                assert len(result["messages"]) == 1
+            # Assertions
+            assert "messages" in result
+            assert len(result["messages"]) == 1
 
-                # Check that all requested fields are included
-                message = result["messages"][0]
-                assert "headers" in message
-                assert message["headers"]["from"] == "sender@example.com"
-                assert message["headers"]["subject"] == "Test Subject"
-                assert "body" in message
-                assert message["body"] == "Email body content"
+            # Check that headers are included
+            message = result["messages"][0]
+            assert "headers" in message
+            assert message["headers"]["from"] == "sender@example.com"
+            assert message["headers"]["subject"] == "Test Subject"
+            
+            # Check that body is not included
+            assert "body" not in message
 
     @pytest.mark.asyncio
     @patch("main.time.sleep")
@@ -450,47 +521,51 @@ class TestIMAPSearch:
 
         mock_client.fetch.side_effect = mock_fetch
 
-        # Mock email message and body
-        with patch("main.email.message_from_bytes", return_value=MagicMock()):
-            with patch("main.get_email_body", return_value="Email body content"):
-                # Test data
-                folder = "INBOX"
-                query = {"subject": "test"}
-                fields = {"headers": True, "body": True}
+        # Mock email message
+        mock_msg = MagicMock()
+        mock_msg.__contains__.side_effect = lambda x: x in ["From", "Subject"]
+        mock_msg.__getitem__.side_effect = lambda x: f"Test {x}"
+        
+        # Patch email.message_from_bytes
+        with patch("main.email.message_from_bytes", return_value=mock_msg):
+            # Test data
+            folder = "INBOX"
+            query = {"subject": "test"}
 
-                # Call function
-                result = await search(folder, query, fields)
+            # Call function
+            result = await search(folder, query)
 
-                # Assertions
+            # Assertions
+            assert (
+                mock_client.fetch.call_count == 3
+            )  # 120 messages / 50 per batch = 3 batches
 
-                assert (
-                    mock_client.fetch.call_count == 3
-                )  # 120 messages / 50 per batch = 3 batches
+            first_batch_ids = mock_client.fetch.call_args_list[0][0][0]
+            assert len(first_batch_ids) == 50
+            assert first_batch_ids[0] == 1
+            assert first_batch_ids[-1] == 50
 
-                first_batch_ids = mock_client.fetch.call_args_list[0][0][0]
-                assert len(first_batch_ids) == 50
-                assert first_batch_ids[0] == 1
-                assert first_batch_ids[-1] == 50
+            second_batch_ids = mock_client.fetch.call_args_list[1][0][0]
+            assert len(second_batch_ids) == 50
+            assert second_batch_ids[0] == 51
+            assert second_batch_ids[-1] == 100
 
-                second_batch_ids = mock_client.fetch.call_args_list[1][0][0]
-                assert len(second_batch_ids) == 50
-                assert second_batch_ids[0] == 51
-                assert second_batch_ids[-1] == 100
+            # Verify third batch (remaining 20 messages)
+            third_batch_ids = mock_client.fetch.call_args_list[2][0][0]
+            assert len(third_batch_ids) == 20
+            assert third_batch_ids[0] == 101
+            assert third_batch_ids[-1] == 120
 
-                # Verify third batch (remaining 20 messages)
-                third_batch_ids = mock_client.fetch.call_args_list[2][0][0]
-                assert len(third_batch_ids) == 20
-                assert third_batch_ids[0] == 101
-                assert third_batch_ids[-1] == 120
+            assert (
+                mock_sleep.call_count == 2
+            )  # Should be called after first and second batches
+            assert mock_sleep.call_args_list[0][0][0] == 0.5  # 500ms sleep
+            assert mock_sleep.call_args_list[1][0][0] == 0.5  # 500ms sleep
 
-                assert (
-                    mock_sleep.call_count == 2
-                )  # Should be called after first and second batches
-                assert mock_sleep.call_args_list[0][0][0] == 0.5  # 500ms sleep
-                assert mock_sleep.call_args_list[1][0][0] == 0.5  # 500ms sleep
-
-                # Verify all messages were processed
-                assert len(result["messages"]) == 120
+            # Verify all messages were processed
+            assert len(result["messages"]) == 120
+            assert "headers" in result["messages"][0]
+            assert "body" not in result["messages"][0]
 
     @pytest.mark.asyncio
     @patch("main.IMAPClient")

@@ -139,13 +139,14 @@ def list_folders() -> list:
 
 
 @mcp.tool()
-async def search(folder: str, criteria: dict, fields: dict = None) -> dict:
-    """Search for emails in the specified IMAP folder and fetch selected components.
+async def search(folder: str, criteria: dict) -> dict:
+    """Search for emails in the specified IMAP folder and return headers.
 
     DESCRIPTION:
         This function performs an IMAP search operation using the provided query criteria
-        and returns matching email messages with requested components (headers, body).
+        and returns matching email messages with headers.
         The search criteria support logical operations and various email attributes.
+        For email bodies, use the 'fetch' function with the returned message IDs.
 
     PARAMETERS:
         folder: str
@@ -177,14 +178,6 @@ async def search(folder: str, criteria: dict, fields: dict = None) -> dict:
             }
             If criteria is empty or missing, matches ALL messages in the folder.
 
-        fields: dict, optional
-            Specifies which components to include in the results:
-            {
-                "headers": bool,  # Include email headers (From, To, Cc, Subject, Date)
-                "body": bool,     # Include email body text
-            }
-            If None or empty, an empty messages list is returned.
-
     RETURNS:
         dict
             A dictionary with the following structure:
@@ -192,25 +185,25 @@ async def search(folder: str, criteria: dict, fields: dict = None) -> dict:
                 "messages": [          # List of message data dictionaries
                     {
                         "id": str,            # Message ID as "id@folder"
-                        "headers": {          # Present if headers requested
+                        "headers": {          # Email headers
                             "from": str,
                             "to": str,
                             "cc": str,
                             "subject": str,
                             "date": str,
                             "message-id": str
-                        },
-                        "body": str           # Present if body requested
+                        }
                     },
                     # ... more messages
                 ]
             }
-            If no messages match or fields is empty, "messages" will be an empty list.
+            If no messages match, "messages" will be an empty list.
 
     BEHAVIOR NOTES:
         - String searches are case-insensitive and match substrings
         - Multiple criteria at the same level are combined with AND logic
         - Logical operators can be nested for complex queries
+        - To retrieve message bodies, use the 'fetch' function with message IDs
 
     EXAMPLES:
         # Search for emails from alice OR bob since 2023-01-01
@@ -223,16 +216,8 @@ async def search(folder: str, criteria: dict, fields: dict = None) -> dict:
         }
     """
 
-    # Default fields if not provided
-    if fields is None:
-        fields = {}
-
-    # Determine what to fetch
-    fetch_headers = fields.get("headers", False)
-    fetch_body = fields.get("body", False)
-
-    # Check if we need to fetch email data
-    fetch_email_data = fetch_headers or fetch_body
+    # Always fetch headers for matching messages
+    fetch_email_data = True
 
     search_criteria = ["charset", "UTF-8"] + dsl_to_search(criteria)
 
@@ -253,17 +238,12 @@ async def search(folder: str, criteria: dict, fields: dict = None) -> dict:
 
         msg_ids = client.search(search_criteria)
 
-        # If no fields requested or no messages found, just return empty messages list
-        if not fetch_email_data or not msg_ids:
+        # If no messages found, just return empty messages list
+        if not msg_ids:
             return {"messages": []}
 
-        # Determine what to fetch based on requested fields
-        fetch_items = []
-
-        if fetch_headers or fetch_body:
-            fetch_items.append(
-                "RFC822"
-            )  # Fetch the full message if any content is needed
+        # Fetch headers for all messages
+        fetch_items = ["RFC822"]
 
         # Fetch the requested data for all messages
         messages = []
@@ -283,26 +263,20 @@ async def search(folder: str, criteria: dict, fields: dict = None) -> dict:
         for id in msg_ids:
             message_data = {"id": f"{id}@{folder}"}
 
-            # Process email content if needed
-            if fetch_headers or fetch_body:
-                raw_email = resp[id][b"RFC822"]
-                msg = email.message_from_bytes(raw_email, policy=policy.default)
+            # Process email content
+            raw_email = resp[id][b"RFC822"]
+            msg = email.message_from_bytes(raw_email, policy=policy.default)
 
-                # Extract headers if requested
-                if fetch_headers:
-                    headers = {}
-                    for header in ["From", "To", "Cc", "Subject", "Date", "Message-ID"]:
-                        if header in msg:
-                            headers[header.lower()] = str(msg[header])
-                    message_data["headers"] = headers
-
-                # Extract body if requested
-                if fetch_body:
-                    message_data["body"] = get_email_body(msg)
+            # Extract headers
+            headers = {}
+            for header in ["From", "To", "Cc", "Subject", "Date", "Message-ID"]:
+                if header in msg:
+                    headers[header.lower()] = str(msg[header])
+            message_data["headers"] = headers
 
             messages.append(message_data)
 
-        # Return only message data
+        # Return message data
         return {"messages": messages}
 
 
