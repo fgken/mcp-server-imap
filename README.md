@@ -6,8 +6,8 @@ This server allows AI assistants to interact with email servers to list folders,
 ## Features
 
 - **List email folders**: Get a list of all folders on the IMAP server
-- **Search emails**: Search for emails in a specified folder using a powerful query DSL
-- **Fetch email content**: Retrieve the content of specific emails
+- **Search emails**: Search for emails in a specified folder using a powerful query DSL (returns headers only)
+- **Fetch email content**: Retrieve the body content of specific emails by message ID
 
 ## Installation
 
@@ -85,3 +85,40 @@ To use this server with Cline or other MCP-compatible assistants, add it to your
 ```bash
 uv run pytest
 ```
+
+## API
+
+### List Folders
+
+```python
+list_folders() -> list
+```
+
+Returns a list of available IMAP folders.
+
+### Search
+
+```python
+search(folder: str, criteria: dict) -> dict
+```
+
+Searches for emails in the specified folder using the provided criteria and returns message headers.
+
+- **folder**: The IMAP folder to search in (e.g., "INBOX")
+- **criteria**: A dictionary of search criteria (e.g., `{"from": "example@email.com", "since": "2023-01-01"}`)
+- **returns**: A dictionary containing message IDs and headers
+
+The search function only returns headers; to get message bodies, use the message IDs with the fetch function.
+
+### Fetch
+
+```python
+fetch(message_ids: list) -> dict
+```
+
+Retrieves the body content of specific emails.
+
+- **message_ids**: List of message IDs (in the format "ID@FOLDER")
+- **returns**: Dictionary mapping message IDs to body content
+
+Usage pattern: First search for messages to get IDs, then fetch body content for specific messages as needed.
