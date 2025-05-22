@@ -164,9 +164,9 @@ class TestIMAPSearch:
         
         # Mock fetch response
         mock_client.fetch.return_value = {
-            1: {b"RFC822": b"email_content_1"},
-            2: {b"RFC822": b"email_content_2"},
-            3: {b"RFC822": b"email_content_3"},
+            1: {b"RFC822.HEADER": b"email_content_1"},
+            2: {b"RFC822.HEADER": b"email_content_2"},
+            3: {b"RFC822.HEADER": b"email_content_3"},
         }
         
         # Mock email message objects
@@ -224,8 +224,8 @@ class TestIMAPSearch:
         
         # Mock fetch response
         mock_client.fetch.return_value = {
-            10: {b"RFC822": b"email_content_10"},
-            20: {b"RFC822": b"email_content_20"},
+            10: {b"RFC822.HEADER": b"email_content_10"},
+            20: {b"RFC822.HEADER": b"email_content_20"},
         }
         
         # Mock email message objects
@@ -270,7 +270,7 @@ class TestIMAPSearch:
         # Mock fetch response
         mock_resp = {}
         for i in range(1, 6):
-            mock_resp[i] = {b"RFC822": f"email_content_{i}".encode()}
+            mock_resp[i] = {b"RFC822.HEADER": f"email_content_{i}".encode()}
         mock_client.fetch.return_value = mock_resp
         
         # Mock email message objects
@@ -310,7 +310,7 @@ class TestIMAPSearch:
         # Mock fetch response
         mock_resp = {}
         for i in [101, 102, 103]:
-            mock_resp[i] = {b"RFC822": f"email_content_{i}".encode()}
+            mock_resp[i] = {b"RFC822.HEADER": f"email_content_{i}".encode()}
         mock_client.fetch.return_value = mock_resp
         
         # Mock email message objects
@@ -347,10 +347,10 @@ class TestIMAPSearch:
         mock_imap_client.return_value.__enter__.return_value = mock_client
         mock_client.search.return_value = [1, 2]
 
-        # Mock fetch response with RFC822 data
+        # Mock fetch response with header data
         mock_client.fetch.return_value = {
-            1: {b"RFC822": b"email_content_1"},
-            2: {b"RFC822": b"email_content_2"},
+            1: {b"RFC822.HEADER": b"email_content_1"},
+            2: {b"RFC822.HEADER": b"email_content_2"},
         }
 
         # Mock email message objects
@@ -422,7 +422,7 @@ class TestIMAPSearch:
         mock_client.search.return_value = [1]
 
         # Mock fetch response
-        mock_client.fetch.return_value = {1: {b"RFC822": b"email_content"}}
+        mock_client.fetch.return_value = {1: {b"RFC822.HEADER": b"email_content"}}
 
         # Mock email message object
         mock_msg = MagicMock()
@@ -463,8 +463,8 @@ class TestIMAPSearch:
         mock_imap_client.return_value.__enter__.return_value = mock_client
         mock_client.search.return_value = [1]
 
-        # Mock fetch response with RFC822
-        mock_client.fetch.return_value = {1: {b"RFC822": b"email_content"}}
+        # Mock fetch response with headers only
+        mock_client.fetch.return_value = {1: {b"RFC822.HEADER": b"email_content"}}
 
         # Mock email message object
         mock_msg = MagicMock()
@@ -511,7 +511,7 @@ class TestIMAPSearch:
         # Mock fetch responses
         batch_responses = {}
         for i in range(1, 121):
-            batch_responses[i] = {b"RFC822": f"email_content_{i}".encode()}
+            batch_responses[i] = {b"RFC822.HEADER": f"email_content_{i}".encode()}
 
         def mock_fetch(ids, items):
             response = {}

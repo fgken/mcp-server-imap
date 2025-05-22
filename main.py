@@ -240,7 +240,7 @@ async def search(folder: str, criteria: dict) -> dict:
             return {"messages": []}
 
         # Fetch headers for all messages
-        fetch_items = ["RFC822"]
+        fetch_items = ["RFC822.HEADER"]
 
         # Fetch the requested data for all messages
         messages = []
@@ -261,7 +261,7 @@ async def search(folder: str, criteria: dict) -> dict:
             message_data = {"id": f"{id}@{folder}"}
 
             # Process email content
-            raw_email = resp[id][b"RFC822"]
+            raw_email = resp[id][b"RFC822.HEADER"]
             msg = email.message_from_bytes(raw_email, policy=policy.default)
 
             # Extract headers
