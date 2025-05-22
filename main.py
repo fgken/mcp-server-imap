@@ -216,9 +216,6 @@ async def search(folder: str, criteria: dict) -> dict:
         }
     """
 
-    # Always fetch headers for matching messages
-    fetch_email_data = True
-
     search_criteria = ["charset", "UTF-8"] + dsl_to_search(criteria)
 
     try:
