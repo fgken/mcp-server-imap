@@ -6,8 +6,8 @@ This server allows AI assistants to interact with email servers to list folders,
 ## Features
 
 - **List email folders**: Get a list of all folders on the IMAP server
-- **Search emails**: Search for emails in a specified folder using a powerful query DSL
-- **Fetch email content**: Retrieve the content of specific emails
+- **Search emails**: Search for emails in a specified folder using a powerful query DSL (returns headers only)
+- **Fetch email content**: Retrieve the body content of specific emails by message ID
 
 ## Installation
 
